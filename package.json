@@ -1,7 +1,9 @@
 {
   "dependencies": {
+    "cloudinary": "^2.7.0",
     "discord.js": "^14.21.0",
     "dotenv": "^17.2.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "luxon": "^3.7.1"
   }
 }

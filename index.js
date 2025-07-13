@@ -1,6 +1,7 @@
-require('./server.js'); // ganz oben, damit der Webserver startet
-
+// --- 📁 index.js ---
+require('./server.js'); // Startet Webserver
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { DateTime } = require('luxon');
 require('dotenv').config();
 const welcomeMessages = require('./welcomeMessages');
 const fs = require('node:fs');
@@ -17,7 +18,6 @@ const client = new Client({
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
 
-// --- COMMANDS LADEN ---
 client.commands = new Map();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
@@ -42,37 +42,35 @@ function scheduleDailyMessages() {
     }
 
     function msUntil(hour, minute = 0, second = 0) {
-      const now = new Date();
-      const target = new Date();
-      target.setHours(hour, minute, second, 0);
-      if (target <= now) target.setDate(target.getDate() + 1);
-      return target - now;
+      const now = DateTime.now().setZone('America/New_York');
+      let target = now.set({ hour, minute, second, millisecond: 0 });
+
+      if (target <= now) {
+        target = target.plus({ days: 1 });
+      }
+
+      const diff = target.diff(now).as('milliseconds');
+      return diff;
     }
 
     setTimeout(function morningTimeout() {
       sendMorningMessage();
       setInterval(sendMorningMessage, 24 * 60 * 60 * 1000);
-    }, msUntil(6, 0, 0));
+    }, msUntil(6, 0, 0)); // 6:00 New York Time
 
     setTimeout(function eveningTimeout() {
       sendEveningMessage();
       setInterval(sendEveningMessage, 24 * 60 * 60 * 1000);
-    }, msUntil(20, 0, 0));
+    }, msUntil(20, 0, 0)); // 20:00 New York Time
   }).catch(console.error);
 }
 
-// --- READY EVENT ---
 client.once('ready', async () => {
   console.log(`✅ Chaotic Bot online as ${client.user.tag}`);
 
-  const guild = client.guilds.cache.first();
-  if (!guild) return console.error("❌ Guild not found!");
-
-  // Starte tägliche Nachrichten
   scheduleDailyMessages();
 
   setTimeout(async () => {
-    // --- 📌 WILLKOMMENSMESSAGE ---
     const welcomeChannel = await client.channels.fetch(process.env.CHANNEL_WELCOME).catch(() => null);
     if (welcomeChannel?.isTextBased()) {
       const messages = await welcomeChannel.messages.fetch({ limit: 10 }).catch(() => null);
@@ -81,59 +79,21 @@ client.once('ready', async () => {
         msg.content.includes('⚛️ Welcome, Bound Fragment')
       );
       if (!alreadyPosted) {
-        welcomeChannel.send(`⚛️ Welcome, Bound Fragment, to the Chaotic Icons Multiverse ⚛️
-
-You have crossed the threshold into a realm shaped by a daring experiment — a collaboration between The Professor and The Broker, who together unleashed a fusion of order and chaos.
-
-Now, you stand at the center of this unraveling reality, chosen to carry the Immutable Laws and to shape the future of the multiverse.
-
-Embrace your mutation. Learn the rules, wield the chaos, and uncover secrets only fragments can see.
-
-The path ahead is uncertain — but your journey begins here.
-
-— The Broker  
-— The Professor`).then(msg => msg.pin()).catch(console.error);
+        welcomeChannel.send(`⚛️ Welcome, Bound Fragment, to the Chaotic Icons Multiverse ⚛️\n\nYou have crossed the threshold into a realm shaped by a daring experiment — a collaboration between The Professor and The Broker, who together unleashed a fusion of order and chaos.\n\nNow, you stand at the center of this unraveling reality, chosen to carry the Immutable Laws and to shape the future of the multiverse.\n\nEmbrace your mutation. Learn the rules, wield the chaos, and uncover secrets only fragments can see.\n\nThe path ahead is uncertain — but your journey begins here.\n\n— The Broker\n— The Professor`).then(msg => msg.pin()).catch(console.error);
       }
     }
 
-    // --- 📣 CHANNEL ERKLÄRUNGEN ---
+    // 📣 Erklärungen in Channeln pinnen
     const channelMessages = [
-      {
-        id: process.env.CHANNEL_PROFESSOR_SIGNALS,
-        content: `🧪 Signals from the Professor.\nAnnouncements about new packs, discovered worlds, lore expansions & system updates.\nA direct link to the core.`,
-      },
-      {
-        id: process.env.CHANNEL_MULTI_NETWORK,
-        content: `🌐 Access points to the outer web of the Multiverse.\nTwitter, OpenSea, Website, YouTube, and more.\nConnections beyond this reality begin here.`,
-      },
-      {
-        id: process.env.CHANNEL_CHAOS_LOUNGE,
-        content: `🔊 The open vortex.\nSpeak freely, connect with other fragments, and share your thoughts across realities.\nAll voices echo here.`,
-      },
-      {
-        id: process.env.CHANNEL_THEORY_HUB,
-        content: `🧩 Hidden codes, anomalies, ideas.\nGlitchborn and above can discuss theories, solve riddles, and uncover deeper layers of the multiverse.\nKnowledge isn’t safe here.`,
-      },
-      {
-        id: process.env.CHANNEL_NEW_ALERTS,
-        content: `⚠️ Real-time alerts for newly uploaded NFTs.\nTitle, preview & metadata appear the moment chaos is released.\nStay ready. It drops without warning.`,
-      },
-      {
-        id: process.env.CHANNEL_PACK_MANIFESTS,
-        content: `📦 Records of all NFT Packs released.\nStructured by group, no links – pure order within chaos.\nSearch and study the patterns.`,
-      },
-      {
-        id: process.env.CHANNEL_CORE_LORE,
-        content: `📖 The living story of the multiverse.\nA written journey unfolding piece by piece – secrets, lies, origins.\nRead carefully. Nothing is just a story.`,
-      },
-      {
-        id: process.env.CHANNEL_VISUAL_PANELS,
-        content: `🖼️ Comic panels of the lore – released every few days.\nVisual glimpses into what the words can’t show.\nSome truths are better seen.`,
-      },
-      {
-        id: process.env.CHANNEL_DISCOVERED_WORLDS,
-        content: `🌍 A log of all known origin worlds from which characters emerged.\nEach world brings new laws, new danger, new energy.\nYour home might be among them.`,
-      },
+      { id: process.env.CHANNEL_PROFESSOR_SIGNALS, content: `🧪 Signals from the Professor.\nAnnouncements about new packs, discovered worlds, lore expansions & system updates.` },
+      { id: process.env.CHANNEL_MULTI_NETWORK, content: `🌐 Access points to the outer web of the Multiverse.\nTwitter, OpenSea, Website, YouTube, and more.` },
+      { id: process.env.CHANNEL_CHAOS_LOUNGE, content: `🔊 The open vortex.\nSpeak freely, connect with other fragments, and share your thoughts.` },
+      { id: process.env.CHANNEL_THEORY_HUB, content: `🧩 Hidden codes, anomalies, ideas.\nGlitchborn and above can discuss theories, solve riddles, and uncover secrets.` },
+      { id: process.env.CHANNEL_NEW_ALERTS, content: `⚠️ Real-time alerts for newly uploaded NFTs.` },
+      { id: process.env.CHANNEL_PACK_MANIFESTS, content: `📦 Records of all NFT Packs released.` },
+      { id: process.env.CHANNEL_CORE_LORE, content: `📖 The living story of the multiverse.` },
+      { id: process.env.CHANNEL_VISUAL_PANELS, content: `🖼️ Comic panels of the lore.` },
+      { id: process.env.CHANNEL_DISCOVERED_WORLDS, content: `🌍 A log of all known origin worlds.` },
     ];
 
     for (const { id, content } of channelMessages) {
@@ -141,22 +101,15 @@ The path ahead is uncertain — but your journey begins here.
       if (!ch?.isTextBased()) continue;
 
       const messages = await ch.messages.fetch({ limit: 10 }).catch(() => null);
-      const exists = messages?.find(msg =>
-        msg.author.id === client.user.id && msg.content === content
-      );
-      if (!exists) {
-        ch.send(content).then(msg => msg.pin()).catch(console.error);
-      }
+      const exists = messages?.find(msg => msg.author.id === client.user.id && msg.content === content);
+      if (!exists) ch.send(content).then(msg => msg.pin()).catch(console.error);
     }
 
-    // --- 📜 VERIFIZIERUNGSMESSAGE MIT REAKTION ---
+    // 📜 Entry Protocol (Rules Embed + Reaktion)
     const entryChannel = await client.channels.fetch(process.env.CHANNEL_ENTRY_PROTOCOL).catch(() => null);
     if (entryChannel?.isTextBased()) {
       const messages = await entryChannel.messages.fetch({ limit: 10 }).catch(() => null);
-      const alreadyExists = messages?.find(msg =>
-        msg.author.id === client.user.id &&
-        msg.embeds[0]?.title === '📜 Die Immutable Laws'
-      );
+      const alreadyExists = messages?.find(msg => msg.embeds[0]?.title === '📜 Die Immutable Laws');
 
       if (!alreadyExists) {
         const embed = new EmbedBuilder()
@@ -197,19 +150,13 @@ The path ahead is uncertain — but your journey begins here.
           }
 
           try {
-            await member.send(
-              `🧹 You've arrived at the edge of all things. Welcome, Fragment.\n` +
-              `A piece of the Chaotic Icons Multiverse has returned — you.\n\n` +
-              `Your journey begins not complete, but full of potential.\n` +
-              `Find what was lost. Shape what could be. Chaos awaits. 🔥`
-            );
+            await member.send(`🧹 You've arrived at the edge of all things. Welcome, Fragment.`);
           } catch {
-            console.log('❌ Konnte dem Bound Fragment keine DM senden.');
+            console.log('❌ Konnte DM nicht senden.');
           }
 
-          // --- 📣 Channel-Begrüßung im Welcome-Channel ---
           const welcomeChannel = member.guild.channels.cache.get(process.env.CHANNEL_WELCOME);
-          if (welcomeChannel && welcomeChannel.isTextBased()) {
+          if (welcomeChannel?.isTextBased()) {
             const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
             const message = randomMessage.replace('{username}', `<@${member.id}>`);
             welcomeChannel.send(message).catch(console.error);
@@ -220,7 +167,6 @@ The path ahead is uncertain — but your journey begins here.
   }, 3000);
 });
 
-// --- 🔁 GUILD MEMBER JOIN: WATCHER-Rolle + DM ---
 client.on('guildMemberAdd', async member => {
   const watcher = member.guild.roles.cache.get(process.env.ROLE_WATCHER);
   if (watcher) {
@@ -233,22 +179,14 @@ client.on('guildMemberAdd', async member => {
   }
 
   try {
-    await member.send(
-      `👁 Welcome to the entrances of the Chaotic Icons Multiverse.\n\n` +
-      `You have been assigned the role: **Watcher**.\n` +
-      `You observe. You remain unseen.\n\n` +
-      `Chaos is unfolding, and your job is to be a witness.\n` +
-      `Be silent. They must not know you are watching.`
-    );
+    await member.send(`👁 Welcome. You are a Watcher now.`);
   } catch {
-    console.log('❌ Konnte dem neuen Watcher keine DM senden.');
+    console.log('❌ Konnte Watcher-DM nicht senden.');
   }
 });
 
-// --- ⌨️ INTERACTION: SLASH COMMANDS ---
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
-
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
 
@@ -261,15 +199,13 @@ client.on('interactionCreate', async interaction => {
   try {
     await command.execute(interaction, client);
   } catch (error) {
-    console.error('❌ Fehler beim Ausführen des Commands:', error);
-    await interaction.reply({ content: 'Something went wrong executing that command.', ephemeral: true });
+    console.error('❌ Fehler beim Command:', error);
+    await interaction.reply({ content: 'Something went wrong.', ephemeral: true });
   }
 });
 
-// --- 🔑 LOGIN ---
 client.login(process.env.TOKEN);
 
-// --- Unhandled Promise Rejection ---
 process.on('unhandledRejection', error => {
   console.error('Unhandled promise rejection:', error);
 });
