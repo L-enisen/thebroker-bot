@@ -1,3 +1,4 @@
+require("./server.js");
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, PermissionsBitField } = require('discord.js');
 require('dotenv').config();
 const welcomeMessages = require('./welcomeMessages');
@@ -278,3 +279,7 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🌐 Webserver ready at port ${PORT}`));
+
+process.on('unhandledRejection', error => {
+  console.error('Unhandled promise rejection:', error);
+});
