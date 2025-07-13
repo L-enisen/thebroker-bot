@@ -65,7 +65,7 @@ client.once('ready', async () => {
   // === 📜 Verifizierung (nur 1x erstellen)
   if (entryChannel?.isTextBased()) {
     const messages = await entryChannel.messages.fetch({ limit: 10 });
-    const old = messages.find(m => m.author.id === client.user.id && m.embeds[0]?.title === '📜 Die Immutable Laws');
+    const old = messages.find(m => m.author.id === client.user.id && m.embeds[0]?.title === '📜 The Immutable Laws');
 
     if (!old) {
       const embed = new EmbedBuilder()
@@ -89,6 +89,21 @@ client.once('ready', async () => {
       fs.writeFileSync(verifyMessageIdPath, JSON.stringify({ messageId: old.id }));
       console.log('🔁 Verifizierungsnachricht existiert bereits');
     }
+  }
+});
+
+// === 👁️ Auto-Rolle Watcher bei Serverbeitritt ===
+client.on('guildMemberAdd', async (member) => {
+  const watcherRole = member.guild.roles.cache.get(process.env.ROLE_WATCHER);
+  if (!watcherRole) {
+    return console.error('❌ Rolle "Watcher" nicht gefunden. Bitte ROLE_WATCHER in .env prüfen.');
+  }
+
+  try {
+    await member.roles.add(watcherRole);
+    console.log(`✅ Rolle "Watcher" an ${member.user.tag} vergeben.`);
+  } catch (err) {
+    console.error(`❌ Fehler beim Vergeben der Watcher-Rolle an ${member.user.tag}:`, err);
   }
 });
 
@@ -124,7 +139,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
     console.log("❌ Couldn't DM user.");
   }
 
-  // Begrüßung in Welcome-Channel
   const welcomeMessages = require('./welcomeMessages');
   const welcomeChannel = reaction.message.guild.channels.cache.get(process.env.CHANNEL_WELCOME);
   if (welcomeChannel?.isTextBased()) {
