@@ -83,7 +83,7 @@ client.once('ready', async () => {
       }
     }
 
-    // 📣 Erklärungen in Channeln pinnen
+    // 📣 Channel-Erklärungen nur einmal posten
     const channelMessages = [
       { id: process.env.CHANNEL_PROFESSOR_SIGNALS, content: `🧪 Signals from the Professor.\nAnnouncements about new packs, discovered worlds, lore expansions & system updates.` },
       { id: process.env.CHANNEL_MULTI_NETWORK, content: `🌐 Access points to the outer web of the Multiverse.\nTwitter, OpenSea, Website, YouTube, and more.` },
@@ -105,15 +105,17 @@ client.once('ready', async () => {
       if (!exists) ch.send(content).then(msg => msg.pin()).catch(console.error);
     }
 
-    // 📜 Entry Protocol (Rules Embed + Reaktion)
+    // 📜 Entry Protocol: Nachricht erstellen oder holen
     const entryChannel = await client.channels.fetch(process.env.CHANNEL_ENTRY_PROTOCOL).catch(() => null);
     if (entryChannel?.isTextBased()) {
       const messages = await entryChannel.messages.fetch({ limit: 10 }).catch(() => null);
-      const alreadyExists = messages?.find(msg => msg.embeds[0]?.title === '📜 Die Immutable Laws');
+      const existingMsg = messages?.find(msg => msg.embeds[0]?.title === '📜 The Immutable Laws');
 
-      if (!alreadyExists) {
+      let entryMsg;
+
+      if (!existingMsg) {
         const embed = new EmbedBuilder()
-          .setTitle('📜 Die Immutable Laws')
+          .setTitle('📜 The Immutable Laws')
           .setDescription(
             `◦ ❌ No hate, racism, or personal attacks – the multiverse is chaos, not cruelty.\n\n` +
             `◦ 🚫 No spam, scams, or self-promotion without permission from the Professor.\n\n` +
@@ -126,43 +128,45 @@ client.once('ready', async () => {
           .setColor(0x8e44ad)
           .setFooter({ text: 'React with 🌀 to accept your role.' });
 
-        const msg = await entryChannel.send({ embeds: [embed] });
-        await msg.react('🌀');
-
-        const collector = msg.createReactionCollector({
-          filter: (reaction, user) => reaction.emoji.name === '🌀' && !user.bot,
-          dispose: true,
-        });
-
-        collector.on('collect', async (reaction, user) => {
-          const guild = reaction.message.guild;
-          const member = await guild.members.fetch(user.id).catch(() => null);
-          if (!member) return;
-
-          const boundFragment = guild.roles.cache.get(process.env.ROLE_BOUND_FRAGMENT);
-          const watcher = guild.roles.cache.get(process.env.ROLE_WATCHER);
-
-          if (boundFragment && !member.roles.cache.has(boundFragment.id)) {
-            await member.roles.add(boundFragment).catch(console.error);
-          }
-          if (watcher && member.roles.cache.has(watcher.id)) {
-            await member.roles.remove(watcher).catch(console.error);
-          }
-
-          try {
-            await member.send(`🧹 You've arrived at the edge of all things. Welcome, Fragment.`);
-          } catch {
-            console.log('❌ Konnte DM nicht senden.');
-          }
-
-          const welcomeChannel = member.guild.channels.cache.get(process.env.CHANNEL_WELCOME);
-          if (welcomeChannel?.isTextBased()) {
-            const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
-            const message = randomMessage.replace('{username}', `<@${member.id}>`);
-            welcomeChannel.send(message).catch(console.error);
-          }
-        });
+        entryMsg = await entryChannel.send({ embeds: [embed] });
+        await entryMsg.react('🌀');
+      } else {
+        entryMsg = existingMsg;
       }
+
+      const collector = entryMsg.createReactionCollector({
+        filter: (reaction, user) => reaction.emoji.name === '🌀' && !user.bot,
+        dispose: true,
+      });
+
+      collector.on('collect', async (reaction, user) => {
+        const guild = reaction.message.guild;
+        const member = await guild.members.fetch(user.id).catch(() => null);
+        if (!member) return;
+
+        const boundFragment = guild.roles.cache.get(process.env.ROLE_BOUND_FRAGMENT);
+        const watcher = guild.roles.cache.get(process.env.ROLE_WATCHER);
+
+        if (boundFragment && !member.roles.cache.has(boundFragment.id)) {
+          await member.roles.add(boundFragment).catch(console.error);
+        }
+        if (watcher && member.roles.cache.has(watcher.id)) {
+          await member.roles.remove(watcher).catch(console.error);
+        }
+
+        try {
+          await member.send(`🧹 You've arrived at the edge of all things. Welcome, Fragment.`);
+        } catch {
+          console.log('❌ Konnte DM nicht senden.');
+        }
+
+        const welcomeChannel = member.guild.channels.cache.get(process.env.CHANNEL_WELCOME);
+        if (welcomeChannel?.isTextBased()) {
+          const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+          const message = randomMessage.replace('{username}', `<@${member.id}>`);
+          welcomeChannel.send(message).catch(console.error);
+        }
+      });
     }
   }, 3000);
 });
