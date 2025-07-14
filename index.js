@@ -208,6 +208,12 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
+const http = require('http');
+
+setInterval(() => {
+  http.get('https://thebroker-bot.onrender.com/');
+}, 4 * 60 * 1000); // alle 4 Minuten
+
 client.login(process.env.TOKEN);
 
 process.on('unhandledRejection', error => {
