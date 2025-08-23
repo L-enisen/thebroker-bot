@@ -25,44 +25,41 @@ for (const file of commandFiles) {
   client.commands.set(command.data.name, command);
 }
 
-function scheduleDailyMessages() {
+const cron = require('node-cron');
+const { DateTime } = require('luxon');
+
+function scheduleDailyMessages(client) {
   const channelId = process.env.CHANNEL_CHAOS_LOUNGE;
-  client.channels.fetch(channelId).then(channel => {
-    if (!channel || !channel.isTextBased()) {
-      console.error('❌ Kanal für Tagesbegrüßungen nicht gefunden!');
-      return;
-    }
 
-    function sendMorningMessage() {
-      channel.send('🌞 Good morning').catch(console.error);
-    }
-
-    function sendEveningMessage() {
-      channel.send('🌙 Good evening').catch(console.error);
-    }
-
-    function msUntil(hour, minute = 0, second = 0) {
-      const now = DateTime.now().setZone('America/New_York');
-      let target = now.set({ hour, minute, second, millisecond: 0 });
-
-      if (target <= now) {
-        target = target.plus({ days: 1 });
+  // 🌞 Good Morning - täglich um 6:00 New York Time
+  cron.schedule('0 6 * * *', async () => {
+    try {
+      const channel = await client.channels.fetch(channelId);
+      if (channel?.isTextBased()) {
+        await channel.send('🌞 Good morning');
+        console.log('📬 Morning message sent');
       }
-
-      const diff = target.diff(now).as('milliseconds');
-      return diff;
+    } catch (err) {
+      console.error('❌ Fehler Morning Message:', err);
     }
+  }, {
+    timezone: 'America/New_York'
+  });
 
-    setTimeout(function morningTimeout() {
-      sendMorningMessage();
-      setInterval(sendMorningMessage, 24 * 60 * 60 * 1000);
-    }, msUntil(6, 0, 0)); // 6:00 New York Time
-
-    setTimeout(function eveningTimeout() {
-      sendEveningMessage();
-      setInterval(sendEveningMessage, 24 * 60 * 60 * 1000);
-    }, msUntil(20, 0, 0)); // 20:00 New York Time
-  }).catch(console.error);
+  // 🌙 Good Evening - täglich um 20:00 New York Time
+  cron.schedule('0 20 * * *', async () => {
+    try {
+      const channel = await client.channels.fetch(channelId);
+      if (channel?.isTextBased()) {
+        await channel.send('🌙 Good evening');
+        console.log('📬 Evening message sent');
+      }
+    } catch (err) {
+      console.error('❌ Fehler Evening Message:', err);
+    }
+  }, {
+    timezone: 'America/New_York'
+  });
 }
 
 client.once('ready', async () => {
